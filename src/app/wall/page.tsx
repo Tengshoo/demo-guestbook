@@ -187,7 +187,7 @@ export default function WallModePage() {
   return (
     <div
       className={`relative w-full min-h-screen min-h-[100dvh] flex flex-col justify-between overflow-x-hidden bg-[#140f0c] text-[#FAF8F5] select-none transition-all pb-[env(safe-area-inset-bottom,0px)] ${
-        isFullscreen ? 'fixed inset-0 z-50 p-3 sm:p-8' : 'p-3 sm:p-8 pt-16 sm:pt-20'
+        isFullscreen ? 'fixed inset-0 z-[60] p-3 sm:p-8' : 'p-3 sm:p-8 pt-4 sm:pt-6'
       }`}
     >
       {/* 1. Full-Bleed Cinematic Background Image Matching Main Page */}

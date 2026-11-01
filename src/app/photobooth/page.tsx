@@ -31,9 +31,9 @@ export default function PhotoboothPage() {
   };
 
   return (
-    <div className="w-full min-h-[100dvh] bg-[#FAF8F5] text-warm-900 pt-14 sm:pt-16 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
+    <div className="w-full min-h-[100dvh] bg-[#FAF8F5] text-warm-900 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))]">
       {/* Top Navigation Bar */}
-      <header className="sticky top-14 sm:top-16 z-30 w-full bg-white/80 backdrop-blur-md border-b border-warm-200/80 px-4 sm:px-6 py-3.5">
+      <header className="w-full bg-white/80 backdrop-blur-md border-b border-warm-200/80 px-4 sm:px-6 py-3.5">
         <div className="max-w-6xl mx-auto flex items-center justify-between gap-2">
           <Link
             href="/"

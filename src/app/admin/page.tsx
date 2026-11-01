@@ -277,7 +277,7 @@ export default function AdminDashboardPage() {
 
   // Authenticated Dashboard View
   return (
-    <div className="w-full min-h-[100dvh] max-w-7xl mx-auto px-4 py-8 sm:py-10 pt-16 sm:pt-20 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] animate-fade-in">
+    <div className="w-full min-h-[100dvh] max-w-7xl mx-auto px-4 py-8 sm:py-10 pt-4 sm:pt-6 pb-[calc(2.5rem+env(safe-area-inset-bottom,0px))] animate-fade-in">
       {/* Toast Notification */}
       {actionMessage && (
         <div className="fixed bottom-6 right-6 z-50 px-4 py-2.5 rounded-2xl bg-warm-900 text-white text-xs font-medium shadow-2xl flex items-center gap-2 animate-fade-up">

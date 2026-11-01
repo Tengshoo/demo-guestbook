@@ -338,8 +338,8 @@ export default function GuestbookPage() {
         <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/40 to-black/80" />
       </div>
 
-      {/* 2. Top Event Navigation Bar */}
-      <header className="relative z-10 w-full max-w-lg mx-auto safe-pt pt-16 sm:pt-20 px-4 flex items-center justify-between">
+      {/* 2. Top Event Navigation Bar (Positioned below the top demo header) */}
+      <header className="relative z-10 w-full max-w-lg mx-auto pt-3 sm:pt-4 px-4 flex items-center justify-between">
         <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-black/40 sm:bg-white/15 backdrop-blur-xs sm:backdrop-blur-md border border-white/20 text-champagne-200 text-xs font-semibold tracking-wide shadow-sm">
           <Sparkles className="w-3.5 h-3.5 text-champagne-300" />
           <span>{eventDetails.hashtag}</span>
