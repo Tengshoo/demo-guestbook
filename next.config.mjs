@@ -4,18 +4,8 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Auto-detect GitHub Pages repository subpath or custom domain
-const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
-const repoName = process.env.GITHUB_REPOSITORY
-  ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}`
-  : '/demo-guestbook';
-
-const basePath =
-  process.env.NEXT_PUBLIC_BASE_PATH !== undefined
-    ? process.env.NEXT_PUBLIC_BASE_PATH
-    : isGithubActions
-    ? repoName
-    : '';
+// Base path is empty since this site uses a custom domain (demo.memoira.art)
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
