@@ -4,8 +4,18 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Base path is empty since this repository uses a custom domain (atifismagallery.memoira.art)
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
+// Auto-detect GitHub Pages repository subpath or custom domain
+const isGithubActions = process.env.GITHUB_ACTIONS === 'true';
+const repoName = process.env.GITHUB_REPOSITORY
+  ? `/${process.env.GITHUB_REPOSITORY.split('/')[1]}`
+  : '/demo-guestbook';
+
+const basePath =
+  process.env.NEXT_PUBLIC_BASE_PATH !== undefined
+    ? process.env.NEXT_PUBLIC_BASE_PATH
+    : isGithubActions
+    ? repoName
+    : '';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -18,8 +28,7 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_BASE_PATH: basePath,
     NEXT_PUBLIC_GOOGLE_SCRIPT_URL:
-      process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL ||
-      'https://script.google.com/macros/s/AKfycbxmqBSEM_3emvagMiClkb9yN1VNalC7joWLkYymvi8fk14xq1SexXeeIs2JS88zX27-/exec',
+      process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || '',
   },
   webpack: (config) => {
     config.resolve.alias['@'] = path.resolve(__dirname, 'src');
