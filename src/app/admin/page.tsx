@@ -19,6 +19,8 @@ import {
   Sparkles,
   ArrowUpDown,
   FolderOpen,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import AudioPlayer from '@/components/AudioPlayer';
 import Link from 'next/link';
@@ -26,7 +28,7 @@ import {
   getAllEntriesForAdmin,
   updateEntryApproval,
   deleteGuestEntry,
-  subscribeToGuestbookUpdates,
+  parsePhotoUrls,
 } from '@/lib/supabase';
 import { getGoogleDriveFolderUrl } from '@/lib/googleDrive';
 import { EVENT_CONFIG } from '@/config/eventConfig';
@@ -53,7 +55,8 @@ export default function AdminDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'approved' | 'hidden'>('all');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
-  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewPhotos, setPreviewPhotos] = useState<string[]>([]);
+  const [previewPhotoIndex, setPreviewPhotoIndex] = useState<number>(0);
 
   // Check sessionStorage for existing authenticated PIN
   useEffect(() => {
@@ -64,26 +67,11 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
-  // Subscribe to live updates when authenticated
-  useEffect(() => {
-    if (!isAuthenticated || !pin) return;
-    const unsubscribe = subscribeToGuestbookUpdates(() => {
-      fetchAdminEntries(pin);
-    });
-    return () => unsubscribe();
-  }, [isAuthenticated, pin]);
-
   const fetchAdminEntries = useCallback(async (currentPin: string) => {
     setIsLoading(true);
     setLoginError(null);
     try {
-      const correctPin =
-        process.env.NEXT_PUBLIC_ADMIN_PIN || EVENT_CONFIG.adminPin || '1234';
-      if (currentPin !== correctPin) {
-        throw new Error('PIN keselamatan tidak sah.');
-      }
-
-      const data = await getAllEntriesForAdmin();
+      const data = await getAllEntriesForAdmin(currentPin);
       setEntries(data);
       setIsAuthenticated(true);
       sessionStorage.setItem('admin_guestbook_pin', currentPin);
@@ -115,7 +103,7 @@ export default function AdminDashboardPage() {
   const toggleApproval = async (id: number, currentStatus: number) => {
     try {
       const newStatus = currentStatus === 1 ? 0 : 1;
-      const res = await updateEntryApproval(id, newStatus);
+      const res = await updateEntryApproval(id, newStatus, pin);
       if (!res.success) {
         throw new Error(res.error || 'Gagal mengemaskini status entri.');
       }
@@ -137,7 +125,7 @@ export default function AdminDashboardPage() {
     if (!confirmDelete) return;
 
     try {
-      const res = await deleteGuestEntry(id);
+      const res = await deleteGuestEntry(id, pin);
       if (!res.success) {
         throw new Error(res.error || 'Gagal memadamkan entri');
       }
@@ -166,16 +154,21 @@ export default function AdminDashboardPage() {
     downloadAnchor.remove();
   };
 
+  const sanitizeCsvCell = (val: string) => {
+    const escaped = val.replace(/"/g, '""');
+    return /^[=+\-@\t\r]/.test(escaped) ? `'${escaped}` : escaped;
+  };
+
   const exportAsCsv = () => {
     const headers = ['ID', 'Name', 'Message', 'Approved', 'Has Photo', 'Has Audio', 'Created At'];
     const rows = entries.map((e) => [
       e.id,
-      `"${e.name.replace(/"/g, '""')}"`,
-      `"${e.message.replace(/"/g, '""')}"`,
+      `"${sanitizeCsvCell(e.name)}"`,
+      `"${sanitizeCsvCell(e.message)}"`,
       e.is_approved === 1 ? 'Yes' : 'No',
       e.photo_url ? 'Yes' : 'No',
       e.audio_url ? 'Yes' : 'No',
-      `"${e.created_at}"`,
+      `"${sanitizeCsvCell(e.created_at)}"`,
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -204,7 +197,7 @@ export default function AdminDashboardPage() {
   const totalCount = entries.length;
   const approvedCount = entries.filter((e) => e.is_approved === 1).length;
   const hiddenCount = entries.filter((e) => e.is_approved === 0).length;
-  const photoCount = entries.filter((e) => !!e.photo_url).length;
+  const photoCount = entries.reduce((sum, e) => sum + parsePhotoUrls(e.photo_url).length, 0);
   const audioCount = entries.filter((e) => !!e.audio_url).length;
 
   // Unauthenticated PIN Form View
@@ -235,24 +228,13 @@ export default function AdminDashboardPage() {
               <input
                 type="password"
                 inputMode="numeric"
-                maxLength={8}
+                maxLength={16}
                 value={enteredPin}
                 onChange={(e) => setEnteredPin(e.target.value)}
-                placeholder="Enter 4-digit PIN (default: 1234)"
+                placeholder="Enter Host Security PIN"
                 autoFocus
                 className="w-full text-center text-2xl font-mono tracking-widest px-4 py-3 rounded-2xl border border-warm-200 bg-warm-50/50 text-warm-900 placeholder-warm-400 focus:outline-none focus:ring-2 focus:ring-champagne-400 focus:bg-white transition"
               />
-              <button
-                type="button"
-                onClick={() => {
-                  setEnteredPin('1234');
-                  fetchAdminEntries('1234');
-                }}
-                className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-champagne-100 hover:bg-champagne-200 text-champagne-900 border border-champagne-300 text-xs font-medium transition active:scale-95 shadow-xs"
-              >
-                <span>✨ Auto-Fill Demo PIN:</span>
-                <code className="font-bold font-mono">1234</code>
-              </button>
             </div>
 
             <button
@@ -321,10 +303,10 @@ export default function AdminDashboardPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200 text-xs font-semibold transition shadow-sm"
-                title="Buka Folder Google Drive"
+                title="Open Google Drive Folder"
               >
                 <FolderOpen className="w-3.5 h-3.5 text-blue-600" />
-                <span>Google Drive</span>
+                <span>GDrive Folder</span>
               </a>
             )}
             <button
@@ -414,6 +396,17 @@ export default function AdminDashboardPage() {
               / {EVENT_CONFIG.photoUploadLimit || 500}
             </span>
           </p>
+          {getGoogleDriveFolderUrl() && (
+            <a
+              href={getGoogleDriveFolderUrl()}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200/80 text-[11px] font-semibold transition"
+            >
+              <FolderOpen className="w-3 h-3 text-blue-600" />
+              <span>Open GDrive Folder</span>
+            </a>
+          )}
         </div>
 
         <div className="bg-white/80 p-4 rounded-2xl border border-warm-200/80 shadow-soft col-span-2 sm:col-span-1">
@@ -536,22 +529,34 @@ export default function AdminDashboardPage() {
 
                     {/* Photo thumbnail */}
                     <td className="py-3.5 px-4 text-center">
-                      {entry.photo_url ? (
-                        <button
-                          type="button"
-                          onClick={() => setPreviewImage(entry.photo_url || null)}
-                          className="w-12 h-12 rounded-xl overflow-hidden border border-warm-200 mx-auto block hover:scale-110 transition shadow-sm group relative"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={entry.photo_url}
-                            alt={`Photo by ${entry.name}`}
-                            className="w-full h-full object-cover"
-                          />
-                        </button>
-                      ) : (
-                        <span className="text-warm-300 font-mono">-</span>
-                      )}
+                      {(() => {
+                        const entryPhotos = parsePhotoUrls(entry.photo_url);
+                        if (entryPhotos.length === 0) {
+                          return <span className="text-warm-300 font-mono">-</span>;
+                        }
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPreviewPhotos(entryPhotos);
+                              setPreviewPhotoIndex(0);
+                            }}
+                            className="w-12 h-12 rounded-xl overflow-hidden border border-warm-200 mx-auto block hover:scale-110 transition shadow-sm group relative"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={entryPhotos[0]}
+                              alt={`Photo by ${entry.name}`}
+                              className="w-full h-full object-cover"
+                            />
+                            {entryPhotos.length > 1 && (
+                              <span className="absolute bottom-0.5 right-0.5 px-1 py-0.2 rounded bg-black/75 text-white text-[9px] font-mono font-bold">
+                                +{entryPhotos.length - 1}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })()}
                     </td>
 
                     {/* Audio Note */}
@@ -616,28 +621,76 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* Lightbox Modal for Photo / Signature Full Preview */}
-      {previewImage && (
+      {/* Lightbox Modal for Multi-Photo Preview */}
+      {previewPhotos.length > 0 && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in"
-          onClick={() => setPreviewImage(null)}
+          onClick={() => setPreviewPhotos([])}
         >
           <div
-            className="relative max-w-2xl max-h-[90dvh] bg-white rounded-3xl p-3 shadow-2xl border-2 border-champagne-300"
+            className="relative max-w-2xl max-h-[90dvh] bg-white rounded-3xl p-3 shadow-2xl border-2 border-champagne-300 flex flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <button
-              onClick={() => setPreviewImage(null)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-black/70 text-white hover:bg-black transition shadow-lg"
+              onClick={() => setPreviewPhotos([])}
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/70 text-white hover:bg-black transition shadow-lg z-20"
             >
               ✕
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewImage}
-              alt="Enlarged preview"
-              className="max-h-[80dvh] w-auto mx-auto rounded-2xl object-contain"
-            />
+
+            <div className="relative flex items-center justify-center">
+              {previewPhotos.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewPhotoIndex(
+                        (prev) => (prev - 1 + previewPhotos.length) % previewPhotos.length
+                      )
+                    }
+                    className="absolute left-3 p-2 rounded-full bg-black/70 text-white hover:bg-black transition shadow-lg z-20"
+                  >
+                    <ChevronLeft className="w-5 h-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setPreviewPhotoIndex((prev) => (prev + 1) % previewPhotos.length)
+                    }
+                    className="absolute right-3 p-2 rounded-full bg-black/70 text-white hover:bg-black transition shadow-lg z-20"
+                  >
+                    <ChevronRight className="w-5 h-5" />
+                  </button>
+                </>
+              )}
+
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={previewPhotos[previewPhotoIndex] || previewPhotos[0]}
+                alt="Enlarged preview"
+                className="max-h-[75dvh] w-auto mx-auto rounded-2xl object-contain"
+              />
+            </div>
+
+            {previewPhotos.length > 1 && (
+              <div className="flex items-center gap-2 mt-2.5 overflow-x-auto max-w-full px-2 pb-1">
+                {previewPhotos.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setPreviewPhotoIndex(idx)}
+                    className={`w-12 h-12 rounded-lg overflow-hidden border-2 flex-shrink-0 transition ${
+                      idx === previewPhotoIndex
+                        ? 'border-champagne-600 scale-105'
+                        : 'border-warm-200 opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imgUrl} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

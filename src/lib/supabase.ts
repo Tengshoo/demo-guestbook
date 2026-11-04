@@ -13,6 +13,59 @@ export interface SupabaseGuestEntry {
   created_at: string;
 }
 
+export const MAX_PHOTOS_PER_WISH = 10;
+
+const SAFE_PHOTO_DATA_URL_REGEX = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=\s]+$/;
+const SAFE_HTTPS_IMAGE_REGEX = /^https:\/\/images\.unsplash\.com\/[^\s"<>]+$/;
+const MAX_PHOTO_DATA_URL_LENGTH = 4_500_000;
+
+export function sanitizePhotoUrl(url?: string | null): string | null {
+  if (!url || typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (
+    trimmed.length > 0 &&
+    trimmed.length <= MAX_PHOTO_DATA_URL_LENGTH &&
+    (SAFE_PHOTO_DATA_URL_REGEX.test(trimmed) || SAFE_HTTPS_IMAGE_REGEX.test(trimmed))
+  ) {
+    return trimmed;
+  }
+  return null;
+}
+
+export function parsePhotoUrls(rawPhotoField?: string | null): string[] {
+  if (!rawPhotoField || typeof rawPhotoField !== 'string') return [];
+  const trimmed = rawPhotoField.trim();
+  if (!trimmed) return [];
+
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => (typeof item === 'string' ? sanitizePhotoUrl(item) : null))
+          .filter((item): item is string => Boolean(item))
+          .slice(0, MAX_PHOTOS_PER_WISH);
+      }
+    } catch {
+      return [];
+    }
+  }
+
+  const single = sanitizePhotoUrl(trimmed);
+  return single ? [single] : [];
+}
+
+export function serializePhotoUrls(urls: string[]): string | null {
+  const valid = urls
+    .map((u) => sanitizePhotoUrl(u))
+    .filter((u): u is string => Boolean(u))
+    .slice(0, MAX_PHOTOS_PER_WISH);
+
+  if (valid.length === 0) return null;
+  if (valid.length === 1) return valid[0];
+  return JSON.stringify(valid);
+}
+
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ||
   EVENT_CONFIG.supabase?.url ||
@@ -359,10 +412,18 @@ export async function submitGuestbookEntry(entry: {
   name: string;
   message: string;
   photo_url?: string | null;
+  photo_urls?: string[];
   audio_url?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
+  const serializedPhotos =
+    entry.photo_urls && entry.photo_urls.length > 0
+      ? serializePhotoUrls(entry.photo_urls)
+      : entry.photo_url
+      ? serializePhotoUrls(parsePhotoUrls(entry.photo_url))
+      : null;
+
   // Enforce photo upload limit if a photo is attached
-  if (entry.photo_url && entry.photo_url.trim().length > 0) {
+  if (serializedPhotos) {
     const { allowed, currentCount, limit } = await isPhotoUploadAllowed();
     if (!allowed) {
       return {
@@ -381,7 +442,7 @@ export async function submitGuestbookEntry(entry: {
           event_id: currentEventId,
           name: entry.name.trim(),
           message: entry.message.trim(),
-          photo_url: entry.photo_url || null,
+          photo_url: serializedPhotos,
           audio_url: entry.audio_url || null,
           is_approved: 1, // Automatically approved or set to 0 if manual moderation is preferred
         },
@@ -403,7 +464,7 @@ export async function submitGuestbookEntry(entry: {
     id: Date.now(),
     name: entry.name.trim(),
     message: entry.message.trim(),
-    photo_url: entry.photo_url || null,
+    photo_url: serializedPhotos,
     audio_url: entry.audio_url || null,
     is_approved: 1,
     created_at: new Date().toISOString(),
@@ -445,7 +506,11 @@ export async function getApprovedEntries(): Promise<SupabaseGuestEntry[]> {
 /**
  * Fetch all entries for Admin Moderation
  */
-export async function getAllEntriesForAdmin(): Promise<SupabaseGuestEntry[]> {
+export async function getAllEntriesForAdmin(pin?: string): Promise<SupabaseGuestEntry[]> {
+  const expectedPin = process.env.NEXT_PUBLIC_ADMIN_PIN || EVENT_CONFIG.adminPin || '1234';
+  if (pin !== undefined && pin !== expectedPin) {
+    throw new Error('Invalid Host Admin PIN');
+  }
   const supabase = getSupabase();
 
   if (supabase) {
@@ -474,7 +539,8 @@ export async function getAllEntriesForAdmin(): Promise<SupabaseGuestEntry[]> {
  */
 export async function updateEntryApproval(
   id: number,
-  isApproved: number
+  isApproved: number,
+  _pin?: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getSupabase();
 
@@ -505,7 +571,8 @@ export async function updateEntryApproval(
  * Delete an entry
  */
 export async function deleteGuestEntry(
-  id: number
+  id: number,
+  _pin?: string
 ): Promise<{ success: boolean; error?: string }> {
   const supabase = getSupabase();
 
