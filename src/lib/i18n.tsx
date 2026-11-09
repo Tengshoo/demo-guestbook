@@ -89,13 +89,15 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     date: EVENT_CONFIG.date.en,
     venue: EVENT_CONFIG.venue,
     hashtag: EVENT_CONFIG.hashtag,
-    welcomeMessage: 'Share your photos, videos, or heartfelt wishes captured with us today.',
+    welcomeMessage:
+      EVENT_CONFIG.welcomeMessage?.en ||
+      'We’re so thrilled to celebrate with you! Snap your favorite moments, strike a pose, and leave your sweetest wishes to make today’s memories last forever!',
     yourName: 'Your Name',
     enterNamePlaceholder: 'Enter your name...',
     shareMomentBtn: 'Share Your Wishes',
     photoboothBtn: '📸 Photobooth Studio (6 Strip Styles)',
     liveWallBtn: 'Open Gallery & Live Wall',
-    footerCelebration: 'memoira • {title} Wedding Celebration',
+    footerCelebration: `memoira • {title} ${EVENT_CONFIG.eventType?.en || 'Wedding Celebration'}`,
 
     // Guestbook Modal
     modalTitle: 'Leave a Memory & Wish',
@@ -103,10 +105,10 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     wishesLabel: 'Heartfelt Wishes & Blessings',
     wishesPlaceholder: 'Write your warmest wishes, congratulations, or lovely memories...',
     charsCount: 'characters',
-    photoLabel: 'Photo / Selfie (Optional)',
+    photoLabel: 'Photos / Selfies (Optional • Up to 10)',
     photoboothModalBtn: '✨ Snap Photobooth Strip (6 Strip Styles)',
     selfieBtn: 'Selfie',
-    choosePhotoBtn: 'Choose Photo',
+    choosePhotoBtn: 'Choose Photos',
     removePhoto: 'Remove photo',
     filterSelectTitle: 'Select Photo Filter',
     frameSelectTitle: 'Select Aesthetic Frame',
@@ -160,13 +162,15 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     date: EVENT_CONFIG.date.ms,
     venue: EVENT_CONFIG.venue,
     hashtag: EVENT_CONFIG.hashtag,
-    welcomeMessage: 'Kongsi gambar, video, atau momen indah yang anda rakam bersama kami.',
+    welcomeMessage:
+      EVENT_CONFIG.welcomeMessage?.ms ||
+      'Kami amat teruja meraikan hari bahagia ini bersama anda! Rakam momen terindah, bergaya di photobooth, dan titipkan ucapan paling manis buat kenangan abadi kami!',
     yourName: 'Nama anda',
     enterNamePlaceholder: 'Masukkan nama anda...',
     shareMomentBtn: 'Kongsikan Momen',
     photoboothBtn: '📸 Studio Photobooth (6 Pilihan Strip)',
     liveWallBtn: 'Buka Galeri & Live Wall',
-    footerCelebration: 'memoira • Majlis Perkahwinan {title}',
+    footerCelebration: `memoira • ${EVENT_CONFIG.eventType?.ms || 'Majlis Perkahwinan'} {title}`,
 
     // Guestbook Modal
     modalTitle: 'Tinggalkan Momen & Ucapan',
@@ -174,7 +178,7 @@ export const TRANSLATIONS: Record<Language, Translations> = {
     wishesLabel: 'Ucapan & Doa Tulus',
     wishesPlaceholder: 'Tuliskan ucapan tahniah, doa keberkatan, atau memori bersama pasangan...',
     charsCount: 'aksara',
-    photoLabel: 'Gambar / Selfie (Pilihan)',
+    photoLabel: 'Gambar / Selfie (Pilihan • Sehingga 10)',
     photoboothModalBtn: '✨ Ambil Strip Photobooth (6 Pilihan Gaya)',
     selfieBtn: 'Selfie',
     choosePhotoBtn: 'Pilih Gambar',
