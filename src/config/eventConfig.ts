@@ -65,7 +65,7 @@ export const EVENT_CONFIG = {
   // 9. Google Drive Photo Storage (Optional in Demo Mode)
   googleDrive: {
     scriptUrl: process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || '',
-    folderUrl: process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_URL || '',
+    folderUrl: process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_URL || 'https://drive.google.com/drive/folders/1OlUIOLCkdtwNU4cQTC_Z35bZzz4A37Hf?usp=drive_link',
   },
 
   // 10. Host Admin PIN (Default PIN for /admin moderation page)
