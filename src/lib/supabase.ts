@@ -15,44 +15,53 @@ export interface SupabaseGuestEntry {
 
 export const MAX_PHOTOS_PER_WISH = 10;
 
-const SAFE_PHOTO_DATA_URL_REGEX = /^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=\s]+$/;
+const SAFE_PHOTO_HEADER_REGEX = /^data:image\/(jpeg|jpg|png|webp);base64,/i;
 const SAFE_HTTPS_IMAGE_REGEX = /^https:\/\/images\.unsplash\.com\/[^\s"<>]+$/;
 const MAX_PHOTO_DATA_URL_LENGTH = 4_500_000;
+const parsedPhotosCache = new Map<string, string[]>();
 
 export function sanitizePhotoUrl(url?: string | null): string | null {
   if (!url || typeof url !== 'string') return null;
   const trimmed = url.trim();
-  if (
-    trimmed.length > 0 &&
-    trimmed.length <= MAX_PHOTO_DATA_URL_LENGTH &&
-    (SAFE_PHOTO_DATA_URL_REGEX.test(trimmed) || SAFE_HTTPS_IMAGE_REGEX.test(trimmed))
-  ) {
-    return trimmed;
-  }
-  return null;
+  if (trimmed.length < 24 || trimmed.length > MAX_PHOTO_DATA_URL_LENGTH) return null;
+  if (SAFE_HTTPS_IMAGE_REGEX.test(trimmed)) return trimmed;
+  if (!SAFE_PHOTO_HEADER_REGEX.test(trimmed.slice(0, 40))) return null;
+  if (trimmed.includes('"') || trimmed.includes('<') || trimmed.includes('>')) return null;
+  return trimmed;
 }
 
 export function parsePhotoUrls(rawPhotoField?: string | null): string[] {
   if (!rawPhotoField || typeof rawPhotoField !== 'string') return [];
+  const cached = parsedPhotosCache.get(rawPhotoField);
+  if (cached) return cached;
+
   const trimmed = rawPhotoField.trim();
   if (!trimmed) return [];
 
+  let result: string[] = [];
   if (trimmed.startsWith('[')) {
     try {
       const parsed = JSON.parse(trimmed);
       if (Array.isArray(parsed)) {
-        return parsed
+        result = parsed
           .map((item) => (typeof item === 'string' ? sanitizePhotoUrl(item) : null))
           .filter((item): item is string => Boolean(item))
           .slice(0, MAX_PHOTOS_PER_WISH);
       }
     } catch {
-      return [];
+      result = [];
     }
+  } else {
+    const single = sanitizePhotoUrl(trimmed);
+    result = single ? [single] : [];
   }
 
-  const single = sanitizePhotoUrl(trimmed);
-  return single ? [single] : [];
+  if (parsedPhotosCache.size > 400) {
+    const oldestKey = parsedPhotosCache.keys().next().value;
+    if (oldestKey) parsedPhotosCache.delete(oldestKey);
+  }
+  parsedPhotosCache.set(rawPhotoField, result);
+  return result;
 }
 
 export function serializePhotoUrls(urls: string[]): string | null {
