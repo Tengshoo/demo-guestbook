@@ -14,6 +14,13 @@ export interface SupabaseGuestEntry {
 }
 
 export const MAX_PHOTOS_PER_WISH = 10;
+export const LIVE_WALL_PAGE_SIZE = 24;
+
+let lastKnownTotalApprovedCount = 0;
+
+export function getApprovedTotalCount(): number {
+  return lastKnownTotalApprovedCount;
+}
 
 const SAFE_PHOTO_HEADER_REGEX = /^data:image\/(jpeg|jpg|png|webp);base64,/i;
 const SAFE_HTTPS_IMAGE_REGEX = /^https:\/\/images\.unsplash\.com\/[^\s"<>]+$/;
@@ -445,25 +452,41 @@ export async function submitGuestbookEntry(entry: {
   const supabase = getSupabase();
 
   if (supabase) {
-    try {
-      const { error } = await supabase.from('entries').insert([
-        {
-          event_id: currentEventId,
-          name: entry.name.trim(),
-          message: entry.message.trim(),
-          photo_url: serializedPhotos,
-          audio_url: entry.audio_url || null,
-          is_approved: 1, // Automatically approved or set to 0 if manual moderation is preferred
-        },
-      ]);
-      if (error) {
-        console.warn('Supabase insert error, falling back to local:', error);
-      } else {
-        notifyGuestbookChange();
-        return { success: true };
+    const MAX_RETRIES = 3;
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const { error } = await supabase.from('entries').insert([
+          {
+            event_id: currentEventId,
+            name: entry.name.trim(),
+            message: entry.message.trim(),
+            photo_url: serializedPhotos,
+            audio_url: entry.audio_url || null,
+            is_approved: 1,
+          },
+        ]);
+        if (!error) {
+          notifyGuestbookChange();
+          return { success: true };
+        }
+        if (error.code === '23514' || error.code === 'P0001') {
+          console.warn('Supabase validation error:', error);
+          break;
+        }
+        if (attempt < MAX_RETRIES) {
+          const delayMs = 700 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 600);
+          await new Promise((r) => setTimeout(r, delayMs));
+        } else {
+          console.warn('Supabase insert error after retries, falling back to local:', error);
+        }
+      } catch (err: unknown) {
+        if (attempt < MAX_RETRIES) {
+          const delayMs = 700 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 600);
+          await new Promise((r) => setTimeout(r, delayMs));
+        } else {
+          console.warn('Supabase insert exception, falling back to local:', err);
+        }
       }
-    } catch (err: unknown) {
-      console.warn('Supabase insert exception, falling back to local:', err);
     }
   }
 
@@ -483,9 +506,12 @@ export async function submitGuestbookEntry(entry: {
 }
 
 /**
- * Fetch all approved entries for the Live Wall
+ * Fetch approved entries for the Live Wall (supports optional `limit` pagination)
  */
-export async function getApprovedEntries(): Promise<SupabaseGuestEntry[]> {
+export async function getApprovedEntries(options?: {
+  limit?: number;
+}): Promise<SupabaseGuestEntry[]> {
+  const limit = options?.limit ?? LIVE_WALL_PAGE_SIZE;
   const supabase = getSupabase();
 
   if (supabase) {
@@ -502,14 +528,17 @@ export async function getApprovedEntries(): Promise<SupabaseGuestEntry[]> {
       const { data, error } = await query.order('created_at', { ascending: false });
 
       if (!error && Array.isArray(data) && data.length > 0) {
-        return data;
+        lastKnownTotalApprovedCount = data.length;
+        return limit > 0 ? data.slice(0, limit) : data;
       }
     } catch (err) {
       console.warn('Supabase live wall query error, falling back to local:', err);
     }
   }
 
-  return getLocalEntries().filter((e) => e.is_approved === 1);
+  const localApproved = getLocalEntries().filter((e) => e.is_approved === 1);
+  lastKnownTotalApprovedCount = localApproved.length;
+  return limit > 0 ? localApproved.slice(0, limit) : localApproved;
 }
 
 /**
