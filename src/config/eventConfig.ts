@@ -4,8 +4,8 @@
  * =========================================================================
  * 
  * Configured for Arman & Farah's Wedding Celebration Demo at Glasshouse at Seputeh.
- * All pages (Cover, Guestbook, Photobooth Studio, Live Wall, and Admin Dashboard)
- * automatically display these demo details.
+ * All pages (Cover, Guestbook, Live Selfie Camera, Photobooth Studio,
+ * Live Wall, and Admin Dashboard) automatically display these demo details.
  * 
  * =========================================================================
  */
@@ -46,12 +46,24 @@ export const EVENT_CONFIG = {
     tagline: 'golden memories & joyful laughs',
   },
 
+  // 6b. Live Selfie Camera Customization (9:16 Story Frames & 30s Video)
+  selfie: {
+    // Default selected 9:16 frame when opening Selfie Camera:
+    // 'wds01' | 'royal-lace' | 'editorial-vogue' | 'minimal-arch' | 'botanical-monogram' | 'retro-cam' | 'polaroid-chin' | 'none'
+    defaultFrame: 'wds01',
+    coupleNames: 'Arman & Farah',
+    tagline: 'The Wedding of',
+    date: '28 November 2026',
+    badgeText: '',
+    allowVideo: true,
+  },
+
   // 7. Cover Photos (Saved in /public/assets/img/ folder)
   images: {
     // Couple portrait avatar (circular photo on front page cover)
-    avatar: '/assets/img/arman-farah-welcome.jpg',
+    avatar: '/assets/img/arman-farah-welcome.webp',
     // Background venue image (full-bleed cinematic cover photo for Home & Live Wall)
-    background: '/assets/img/arman-farah-venue.png',
+    background: '/assets/img/arman-farah-venue.webp',
   },
 
   // 8. Supabase Cloud Database (With seamless, zero-config local demo fallback)
@@ -65,7 +77,9 @@ export const EVENT_CONFIG = {
   // 9. Google Drive Photo Storage (Optional in Demo Mode)
   googleDrive: {
     scriptUrl: process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL || '',
-    folderUrl: process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_URL || 'https://drive.google.com/drive/folders/1OlUIOLCkdtwNU4cQTC_Z35bZzz4A37Hf?usp=drive_link',
+    folderUrl:
+      process.env.NEXT_PUBLIC_GOOGLE_DRIVE_FOLDER_URL ||
+      'https://drive.google.com/drive/folders/1OlUIOLCkdtwNU4cQTC_Z35bZzz4A37Hf?usp=drive_link',
   },
 
   // 10. Host Admin PIN (Default PIN for /admin moderation page)
